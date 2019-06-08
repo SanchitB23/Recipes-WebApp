@@ -29,4 +29,7 @@ import {DropdownDirective} from './shared/dropdown.directive';
   providers: [],
   bootstrap: [AppComponent]
 })
-export class AppModule { }
+// FIXME href attributes in <a> tag redirects to nowhere and causes Problems;Fix: clear href
+export class AppModule {
+}
+
