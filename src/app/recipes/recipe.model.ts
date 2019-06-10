@@ -6,9 +6,9 @@ export class Recipe {
   public imgPath: string;
   public ingredients: Ingredient[];
 
-  constructor(name: string, desc: string, imgPath: string, ingredients: Ingredient[]) {
+  constructor(name: string, description: string, imgPath: string, ingredients: Ingredient[]) {
     this.name = name;
-    this.description = desc;
+    this.description = description;
     this.imgPath = imgPath;
     this.ingredients = ingredients;
   }
