@@ -1,7 +1,9 @@
 import {Injectable} from '@angular/core';
 import {HttpClient, HttpErrorResponse} from '@angular/common/http';
-import {catchError} from 'rxjs/operators';
-import {throwError} from 'rxjs';
+import {catchError, tap} from 'rxjs/operators';
+import {BehaviorSubject, throwError} from 'rxjs';
+import {UserModel} from './user.model';
+import {Router} from '@angular/router';
 
 export interface AuthResponseData {
   kind: string;
@@ -18,12 +20,15 @@ export interface AuthResponseData {
 })
 export class AuthService {
   private API_KEY: string = 'AIzaSyAvQVW4EIUujO-vsG7XOW1fm8YjkUhjk3w ';
+  user = new BehaviorSubject<UserModel>(null);
+  private tokenExpTimer: any;
 
-  constructor(private http: HttpClient) {
+  constructor(private http: HttpClient, private router: Router) {
   }
 
   private static handleError(errorRes: HttpErrorResponse) {
-    let errMessage: string = 'An Unknown Error occurred!';
+    let errMessage = 'An Unknown Error occurred!';
+    console.log('Error Handling:HTTP: ', errorRes);
     if (!errorRes.error || !errorRes.error.error || !errorRes.error.error.message) {
       return throwError(errMessage);
     }
@@ -40,8 +45,6 @@ export class AuthService {
       case 'USER_DISABLED':
         errMessage = 'The user account has been disabled by an administrator';
         break;
-      default:
-        errMessage = 'An Unknown Error occurred!';
     }
     return throwError(errMessage);
   }
@@ -55,7 +58,10 @@ export class AuthService {
         returnSecureToken: true
       }
     )
-      .pipe(catchError(AuthService.handleError));
+      .pipe(catchError(AuthService.handleError), tap(resData => {
+        const {email, localId, idToken, expiresIn} = resData;
+        this.handleAuthentication(email, localId, idToken, +expiresIn);
+      }));
   }
 
   login(email: string, password: string) {
@@ -67,7 +73,65 @@ export class AuthService {
         returnSecureToken: true
       }
     )
-      .pipe(catchError(AuthService.handleError));
+      .pipe(catchError(AuthService.handleError), tap(resData => {
+        const {email, localId, idToken, expiresIn} = resData;
+        this.handleAuthentication(email, localId, idToken, +expiresIn);
+      }));
   }
 
+  logout() {
+    this.user.next(null);
+    this.router.navigate(['./auth']);
+    localStorage.removeItem('userData');
+    if (this.tokenExpTimer) {
+      clearTimeout(this.tokenExpTimer);
+    }
+    this.tokenExpTimer = null;
+  }
+
+  autoLogout(expDuration: number) {
+    this.tokenExpTimer = setTimeout(() => {
+      this.logout();
+    }, expDuration);
+  }
+
+  autoLogin() {
+    const userData: {
+      email: string,
+      id: string,
+      _token: string,
+      _tokenExpirationDate: string,
+
+    } = JSON.parse(localStorage.getItem('userData'));
+    if (!userData) {
+      return;
+    }
+    const {
+      email,
+      id,
+      _token,
+      _tokenExpirationDate,
+    } = userData;
+    const loadedUser = new UserModel(email, id, _token, new Date(_tokenExpirationDate));
+    if (loadedUser.token) {
+      this.user.next(loadedUser);
+      const expDuration = new Date(userData._tokenExpirationDate).getTime() - new Date().getTime();
+      this.autoLogout(expDuration);
+    }
+  }
+
+  private handleAuthentication(
+    email: string,
+    localId: string,
+    idToken: string,
+    expiresIn: number
+  ) {
+    const expirationDate = new Date(
+      new Date().getTime() + expiresIn * 1000
+    );
+    const user = new UserModel(email, localId, idToken, expirationDate);
+    this.user.next(user);
+    this.autoLogout(expiresIn * 1000);
+    localStorage.setItem('userData', JSON.stringify(user));
+  }
 }
