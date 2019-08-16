@@ -55,6 +55,14 @@
             }
           }
         },
+        "server": {
+          "builder": "@angular-devkit/build-angular:server",
+          "options": {
+            "outputPath": "dist/your-project-name-server",
+            "main": "src/main.server.ts",
+            "tsConfig": "src/tsconfig.server.json"
+          }
+        },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
@@ -115,6 +123,7 @@
           }
         }
       }
-    }},
+    }
+  },
   "defaultProject": "Recipes"
 }
